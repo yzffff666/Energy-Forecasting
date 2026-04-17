@@ -1,0 +1,2 @@
+"""Energy forecasting prototype package."""
+
