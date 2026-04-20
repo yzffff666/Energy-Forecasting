@@ -1,32 +1,32 @@
 # Energy Forecasting Prototype
 
-A lightweight research prototype for short-term electricity load forecasting with uncertainty estimation under realistic time-series data conditions.
+A small research-style project for short-term electricity load forecasting with prediction intervals.
 
-I built this as a baseline-first forecasting project rather than a large modeling system. The current version is deliberately simple: start from ERCOT hourly load data, construct leakage-safe lag and rolling features, compare against naive persistence rules, and check whether quantile intervals are calibrated well enough to be useful.
+I built this as a baseline-first project rather than a large forecasting system. The current version starts from ERCOT hourly load data, builds lag and rolling features, compares XGBoost with simple persistence rules, and checks whether the prediction intervals are reliable enough to be useful.
 
 **Current result:** on the 2025 ERCOT test split, XGBoost reaches **0.99% MAPE**, improving over a one-hour persistence baseline (**2.08% MAPE**) while also producing quantile-based prediction intervals.
 
 ## Problem
 
-The goal is to predict short-term electricity demand from historical load patterns and calendar signals, while also estimating predictive uncertainty through forecast intervals.
+The goal is to predict short-term electricity demand from historical load patterns and calendar signals, while also reporting a forecast range instead of only a point prediction.
 
-From a research workflow perspective, this prototype is intended to answer three basic questions:
+For this version, I focused on three questions:
 
 - Can a tabular ML baseline outperform naive persistence forecasting on hourly system load?
-- Can prediction intervals be produced with minimal additional modeling complexity?
+- Can prediction intervals be added without making the model pipeline too complicated?
 - Are the forecast intervals actually well calibrated, or are they systematically too narrow?
 
 ## Research Relevance
 
-Short-term load forecasts are used in operational planning tasks such as unit commitment, reserve scheduling, demand response, and congestion management. Even a simple hourly forecast can be useful if it is reproducible, easy to audit, and evaluated under a time-respecting split.
+Short-term load forecasts are useful for operational planning tasks such as unit commitment, reserve scheduling, demand response, and congestion management. Even a simple hourly forecast is more useful when it is reproducible, easy to audit, and evaluated with a time-respecting split.
 
-The uncertainty part matters because grid operators often need more than a point estimate. A forecast interval gives a rough sense of downside and upside risk, which is relevant when deciding how much reserve capacity to hold or how aggressively to schedule flexible demand. In this prototype, the point forecast performs well against naive baselines, but the interval coverage is below the nominal level, which makes calibration a natural research follow-up rather than just an implementation detail.
+The prediction interval part matters because grid operators often need more than one expected value. A forecast range gives a rough sense of downside and upside risk, which is relevant when deciding how much reserve capacity to hold or how aggressively to schedule flexible demand. In this project, the point forecast works well against naive baselines, but the interval coverage is lower than expected, so calibration becomes a natural next step.
 
 I kept the first version load-only on purpose. Before adding weather, renewable generation, or more complex neural models, I wanted a baseline that makes the data assumptions, leakage controls, and evaluation outputs easy to inspect.
 
 ## Data
 
-The default experiment uses the ERCOT 2025 hourly native load archive:
+The default run uses the ERCOT 2025 hourly native load archive:
 
 - input file: `data/Native_Load_2025.zip`
 - Excel member: `Native_Load_2025.xlsx`
@@ -35,13 +35,13 @@ The default experiment uses the ERCOT 2025 hourly native load archive:
 
 The loader supports CSV, Excel, and ZIP archives containing a single CSV/XLSX file. ERCOT's hour-ending timestamps are normalized automatically, including `24:00` and DST/ST suffixes.
 
-Optional exogenous features can be added through `config.json`, but the current default experiment uses historical load and calendar features only.
+Optional external features can be added through `config.json`, but the current default run uses historical load and calendar features only.
 
 For this first version, I intentionally left weather covariates out so that I could verify the load-only baseline and the no-leakage feature pipeline first. The repository reads directly from the ZIP archive, so the manually extracted folder is not needed for training.
 
 ## Method
 
-The forecasting task is converted into a supervised learning problem by building one row per timestamp with features derived only from past observations.
+I convert the time series into a supervised learning table by building one row per timestamp with features derived only from past observations.
 
 Feature groups:
 
@@ -59,23 +59,23 @@ I kept the modeling layer small so that a future LSTM baseline can be added with
 
 ## Experimental Setup
 
-The experiment uses a deterministic chronological train/validation/test split:
+I use a deterministic chronological train/validation/test split:
 
 - train: 70%
 - validation: 15%
 - test: 15%
 
-This avoids random shuffling across time and reduces leakage risk. For ERCOT 2025, the processed dataset contains:
+This avoids random shuffling across time and reduces leakage risk. For ERCOT 2025, the processed data contains:
 
 - raw rows: 8760
 - modeling rows after lag/rolling feature construction: 8592
 - train / validation / test rows: 6014 / 1288 / 1290
 
-All key settings live in `config.json`. Each run saves the resolved config, metrics, predictions, plots, feature names, and the trained model under `results/<experiment_name>/` so that the experiment can be traced later.
+All key settings live in `config.json`. Each run saves the resolved config, metrics, predictions, plots, feature names, and trained model under `results/<experiment_name>/` so the experiment can be checked later.
 
 ## Results
 
-Current test-set results on ERCOT 2025 hourly system load:
+Test-set results on ERCOT 2025 hourly system load:
 
 | Model | MAE | RMSE | MAPE | Interval Coverage | Mean Interval Width |
 |---|---:|---:|---:|---:|---:|
@@ -83,10 +83,10 @@ Current test-set results on ERCOT 2025 hourly system load:
 | Persistence (`t-24`) | 2404.80 | 3210.91 | 4.73% | - | - |
 | XGBoost | 501.66 | 653.79 | 0.99% | 69.22% | 1566.72 MW |
 
-Interpretation:
+What I found:
 
-- The XGBoost baseline is clearly better than both persistence rules for point forecasting on this split.
-- The 0.1 / 0.9 quantile band should behave like an 80% interval, but test coverage is only 69.22% with an average width of 1566.72 MW. So the current uncertainty estimate looks overconfident, and interval calibration is an obvious next step.
+- XGBoost is clearly better than both persistence rules for point forecasting on this split.
+- The 0.1 / 0.9 quantile band should act like an 80% interval, but test coverage is only 69.22% with an average width of 1566.72 MW. That means the interval is too confident right now, so calibration is a good next step.
 
 ### Forecast Visualization
 
@@ -182,17 +182,8 @@ Uncertainty quality:
 
 ## Limitations And Next Steps
 
-Current limitations:
+Right now this is still a simple baseline study. The default setup is one-step-ahead forecasting, not a full day-ahead or multi-horizon forecast. I also use one fixed chronological split, so rolling-origin backtesting would be a better next evaluation step.
 
-- the default setup is one-step-ahead forecasting, not multi-horizon day-ahead forecasting
-- only one fixed chronological split is used, rather than rolling-origin backtesting
-- the forecast interval is under-covered on the test set and has not been calibrated yet
-- weather variables are not included in the default run; I left them out on purpose for the first load-only baseline
-- no LSTM or sequence model baseline yet
+The prediction intervals are useful to inspect, but they are not calibrated yet. The current 80% nominal interval only covers 69.22% of the test points, so I would next try conformal calibration or residual scaling.
 
-Planned extensions:
-
-- add weather features such as temperature and humidity
-- add interval calibration, for example conformal prediction or residual scaling
-- add rolling-origin evaluation
-- implement an LSTM baseline under `src/energy_forecasting/models/`
+I also left out weather variables on purpose for the first version. A natural extension would be to add temperature and humidity, compare load-only vs load-plus-weather features, and later add an LSTM baseline under `src/energy_forecasting/models/`.
