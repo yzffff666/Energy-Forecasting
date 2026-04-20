@@ -8,7 +8,7 @@ import pandas as pd
 from .config import load_config, prepare_output_dir, save_json
 from .data import load_dataset
 from .features import build_feature_frame
-from .metrics import compute_regression_metrics, interval_coverage
+from .metrics import compute_regression_metrics, interval_coverage, mean_interval_width
 from .plotting import plot_forecast_vs_actual, plot_prediction_interval
 from .splits import time_series_split
 
@@ -61,6 +61,10 @@ def run_training_pipeline(config_path: Path) -> dict:
         if {"prediction_lower", "prediction_upper"}.issubset(predictions.columns):
             split_metrics["interval_coverage"] = interval_coverage(
                 predictions["actual"].to_numpy(),
+                predictions["prediction_lower"].to_numpy(),
+                predictions["prediction_upper"].to_numpy(),
+            )
+            split_metrics["mean_interval_width"] = mean_interval_width(
                 predictions["prediction_lower"].to_numpy(),
                 predictions["prediction_upper"].to_numpy(),
             )
@@ -168,6 +172,10 @@ def evaluate_saved_predictions(
     if {"prediction_lower", "prediction_upper"}.issubset(eval_frame.columns):
         metrics["interval_coverage"] = interval_coverage(
             eval_frame["actual"].to_numpy(),
+            eval_frame["prediction_lower"].to_numpy(),
+            eval_frame["prediction_upper"].to_numpy(),
+        )
+        metrics["mean_interval_width"] = mean_interval_width(
             eval_frame["prediction_lower"].to_numpy(),
             eval_frame["prediction_upper"].to_numpy(),
         )

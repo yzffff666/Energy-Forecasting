@@ -4,13 +4,15 @@
       "mae": 424.8677159592391,
       "rmse": 568.1606225803365,
       "mape": 0.760591656090162,
-      "interval_coverage": 0.6079192546583851
+      "interval_coverage": 0.6079192546583851,
+      "mean_interval_width": 1310.2303466796875
     },
     "test": {
       "mae": 501.66142139554245,
       "rmse": 653.794683893247,
       "mape": 0.9868524416297058,
-      "interval_coverage": 0.6922480620155039
+      "interval_coverage": 0.6922480620155039,
+      "mean_interval_width": 1566.7197265625
     }
   },
   "persistence_lag_1": {

@@ -27,3 +27,6 @@ def interval_coverage(y_true: np.ndarray, lower: np.ndarray, upper: np.ndarray) 
     covered = (y_true >= lower) & (y_true <= upper)
     return float(np.mean(covered))
 
+
+def mean_interval_width(lower: np.ndarray, upper: np.ndarray) -> float:
+    return float(np.mean(upper - lower))

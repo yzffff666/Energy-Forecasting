@@ -16,6 +16,14 @@ From a research workflow perspective, this prototype is intended to answer three
 - Can prediction intervals be produced with minimal additional modeling complexity?
 - Are the forecast intervals actually well calibrated, or are they systematically too narrow?
 
+## Research Relevance
+
+Short-term load forecasts are used in operational planning tasks such as unit commitment, reserve scheduling, demand response, and congestion management. Even a simple hourly forecast can be useful if it is reproducible, easy to audit, and evaluated under a time-respecting split.
+
+The uncertainty part matters because grid operators often need more than a point estimate. A forecast interval gives a rough sense of downside and upside risk, which is relevant when deciding how much reserve capacity to hold or how aggressively to schedule flexible demand. In this prototype, the point forecast performs well against naive baselines, but the interval coverage is below the nominal level, which makes calibration a natural research follow-up rather than just an implementation detail.
+
+I kept the first version load-only on purpose. Before adding weather, renewable generation, or more complex neural models, I wanted a baseline that makes the data assumptions, leakage controls, and evaluation outputs easy to inspect.
+
 ## Data
 
 The default experiment uses the ERCOT 2025 hourly native load archive:
@@ -69,16 +77,16 @@ All key settings live in `config.json`. Each run saves the resolved config, metr
 
 Current test-set results on ERCOT 2025 hourly system load:
 
-| Model | MAE | RMSE | MAPE | Interval Coverage |
-|---|---:|---:|---:|---:|
-| Persistence (`t-1`) | 1051.47 | 1288.17 | 2.08% | - |
-| Persistence (`t-24`) | 2404.80 | 3210.91 | 4.73% | - |
-| XGBoost | 501.66 | 653.79 | 0.99% | 69.22% |
+| Model | MAE | RMSE | MAPE | Interval Coverage | Mean Interval Width |
+|---|---:|---:|---:|---:|---:|
+| Persistence (`t-1`) | 1051.47 | 1288.17 | 2.08% | - | - |
+| Persistence (`t-24`) | 2404.80 | 3210.91 | 4.73% | - | - |
+| XGBoost | 501.66 | 653.79 | 0.99% | 69.22% | 1566.72 MW |
 
 Interpretation:
 
 - The XGBoost baseline is clearly better than both persistence rules for point forecasting on this split.
-- The 0.1 / 0.9 quantile band should behave like an 80% interval, but test coverage is only 69.22%. So the current uncertainty estimate looks overconfident, and interval calibration is an obvious next step.
+- The 0.1 / 0.9 quantile band should behave like an 80% interval, but test coverage is only 69.22% with an average width of 1566.72 MW. So the current uncertainty estimate looks overconfident, and interval calibration is an obvious next step.
 
 ### Forecast Visualization
 
@@ -170,6 +178,7 @@ Point forecast accuracy:
 Uncertainty quality:
 
 - empirical interval coverage, when prediction bounds are available
+- mean interval width, to show how wide the prediction bands are
 
 ## Limitations And Next Steps
 
